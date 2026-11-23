@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Góry zimą – czy warto wchodzić?</title>
+<style>
+:root{--bg:#f3f6fa;--card:#fff;--tx:#17212b;--mu:#64707d;--ac:#2563eb;--br:#e1e7ee}
+@media(prefers-color-scheme:dark){:root{--bg:#0e141b;--card:#18212b;--tx:#e8eef5;--mu:#93a1b0;--ac:#6ea0ff;--br:#273443}}
+*{box-sizing:border-box}body{margin:0;font:16px system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+main{max-width:640px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.4rem;margin:8px 0 14px}
+input{width:100%;padding:14px 16px;font-size:1rem;border-radius:14px;border:1px solid var(--br);background:var(--card);color:var(--tx)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 16px}
+.chip{padding:6px 12px;border-radius:99px;border:1px solid var(--br);background:var(--card);color:var(--tx);cursor:pointer;font-size:.85rem}
+.card{background:var(--card);border:1px solid var(--br);border-radius:18px;padding:18px;margin-bottom:14px}
+.top{display:flex;align-items:center;gap:16px}
+.score{width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-weight:700;flex:none}
+.score b{font-size:2rem;line-height:1}.score small{font-size:.7rem;opacity:.9}
+h2{margin:0;font-size:1.2rem}.mu{color:var(--mu);font-size:.88rem}
+.bar{height:12px;border-radius:99px;background:linear-gradient(90deg,#22c55e,#eab308,#ef4444);position:relative;margin:10px 0 4px}
+.bar i{position:absolute;top:-4px;width:6px;height:20px;border-radius:3px;background:var(--tx);transform:translateX(-3px)}
+table{width:100%;border-collapse:collapse;font-size:.95rem}td,th{padding:8px 4px;text-align:left;border-bottom:1px solid var(--br)}th{color:var(--mu);font-weight:500;font-size:.8rem}
+ul{padding-left:18px;margin:8px 0}li{margin:4px 0}
+.warn{font-size:.8rem;color:var(--mu);line-height:1.45}.warn a{color:var(--ac)}
+</style></head><body><main>
+<h1>⛰️ Góry zimą – czy warto wchodzić?</h1>
+<input id="q" list="dl" placeholder="Wpisz nazwę szczytu, np. Rysy, Babia Góra, Śnieżka…" autocomplete="off">
+<datalist id="dl"></datalist>
+<div class="chips" id="chips"></div>
+<div id="out"></div>
+<p class="warn">Dane: Open-Meteo (model pogodowy). Wskaźnik ryzyka lawinowego i ocena są <b>orientacyjne</b> i nie zastępują oficjalnego komunikatu lawinowego: <a href="https://lawiny.topr.pl" target="_blank" rel="noopener">TOPR (Tatry)</a>, <a href="https://www.gopr.pl" target="_blank" rel="noopener">GOPR</a>. Temperatura i wiatr na niższych wysokościach są przeliczone (gradient 0,65°C/100 m). Model nie zna starej pokrywy śnieżnej sprzed 3 dni.</p>
+</main>
+<script>
+const P=[
+["Rysy","Tatry",49.1795,20.0881,2499],["Kasprowy Wierch","Tatry",49.2320,19.9813,1987],["Giewont","Tatry",49.2507,19.9345,1894],
+["Świnica","Tatry",49.2193,20.0092,2301],["Kościelec","Tatry",49.2327,20.0092,2155],["Czerwone Wierchy (Kopa Kondracka)","Tatry",49.2316,19.9482,2005],
+["Morskie Oko","Tatry",49.2015,20.0710,1395],["Babia Góra","Beskid Żywiecki",49.5733,19.5292,1725],["Pilsko","Beskid Żywiecki",49.5258,19.3269,1557],
+["Rysianka","Beskid Żywiecki",49.5497,19.2894,1322],["Śnieżka","Karkonosze",50.7361,15.7401,1603],["Szrenica","Karkonosze",50.7861,15.5139,1362],
+["Śnieżne Kotły","Karkonosze",50.7897,15.6005,1490],["Śnieżnik","Masyw Śnieżnika",50.2086,16.8479,1425],["Tarnica","Bieszczady",49.0764,22.7261,1346],
+["Połonina Caryńska","Bieszczady",49.0600,22.6800,1297],["Wetlińska","Bieszczady",49.1000,22.5250,1253],["Turbacz","Gorce",49.5214,20.1081,1310],
+["Radziejowa","Beskid Sądecki",49.4403,20.6425,1262],["Mogielica","Beskid Wyspowy",49.6486,20.3067,1171],["Skrzyczne","Beskid Śląski",49.6836,19.0306,1257],
+["Szczeliniec Wielki","Góry Stołowe",50.4853,16.3453,919],["Wielka Sowa","Góry Sowie",50.6811,16.4833,1015],["Wysoka (Pieniny)","Pieniny",49.4025,20.4233,1050],
+["Trzy Korony","Pieniny",49.4189,20.4189,982],["Lackowa","Beskid Niski",49.4267,21.0833,997],["Orlica","Góry Orlickie",50.3269,16.3925,1084]];
+const nrm=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ł/g,"l");
+const dl=document.getElementById("dl"),q=document.getElementById("q"),out=document.getElementById("out");
+P.forEach(p=>{const o=document.createElement("option");o.value=p[0];o.label=p[1];dl.appendChild(o)});
+["Rysy","Babia Góra","Śnieżka","Giewont","Tarnica","Pilsko"].forEach(n=>{const b=document.createElement("button");b.className="chip";b.textContent=n;b.onclick=()=>{q.value=n;go()};document.getElementById("chips").appendChild(b)});
+q.addEventListener("change",go);q.addEventListener("keydown",e=>{if(e.key==="Enter")go()});
+const sum=(a,i,j)=>a.slice(Math.max(0,i),j).reduce((x,y)=>x+(y||0),0);
+const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+function go(){
+ const k=nrm(q.value.trim());if(!k)return;
+ const p=P.find(x=>nrm(x[0])===k)||P.find(x=>nrm(x[0]).includes(k)||nrm(x[1]).includes(k));
+ out.replaceChildren(el("p","mu",p?"Pobieram dane…":"Nie znalazłem takiej góry. Spróbuj np. Rysy, Babia Góra, Śnieżka."));
+ if(!p)return;
+ const u=`https://api.open-meteo.com/v1/forecast?latitude=${p[2]}&longitude=${p[3]}&elevation=${p[4]}&hourly=temperature_2m,snowfall,rain,wind_gusts_10m,wind_speed_10m&past_days=3&forecast_days=2&timezone=Europe%2FWarsaw&wind_speed_unit=kmh`;
+ fetch(u).then(r=>r.json()).then(d=>render(p,d)).catch(()=>out.replaceChildren(el("p","mu","Błąd pobierania danych. Ta strona musi być otwarta w przeglądarce z dostępem do internetu.")));
+}
+function render(p,d){
+ const h=d.hourly,i=72+new Date().getHours(),T=h.temperature_2m[i],
+ snow72=sum(h.snowfall,i-72,i),snow24=sum(h.snowfall,i,i+24),
+ rain=sum(h.rain,i-48,i+24),gust=Math.max(...h.wind_gusts_10m.slice(i,i+12)),
+ wind=h.wind_speed_10m.slice(i,i+12).reduce((a,b)=>a+b,0)/12,
+ tmax=Math.max(...h.temperature_2m.slice(i,i+24)),why=[];
+ let r=Math.min(40,(snow72+snow24*.5)*2.5);
+ if(snow72+snow24>=5){r+=Math.min(30,Math.max(0,gust-25)*.5);if(gust>=45)why.push("wiatr "+Math.round(gust)+" km/h przenosi śnieg i tworzy zaspy")}
+ if(snow72+snow24>=3&&tmax>-1){r+=15;why.push("ocieplenie do "+tmax.toFixed(0)+"°C przy świeżym śniegu")}
+ if(rain>2&&T<3){r+=15;why.push("deszcz na śnieg ("+rain.toFixed(0)+" mm)")}
+ if(snow72+snow24<2&&tmax>3){r=Math.min(r,10);why.push("brak świeżego śniegu w modelu")}
+ r=Math.round(Math.min(100,r));
+ if(snow72>=10)why.push("świeży opad śniegu 72 h: "+snow72.toFixed(0)+" cm");
+ if(snow24>=5)why.push("prognozowany opad 24 h: "+snow24.toFixed(0)+" cm");
+ const chill=T-wind*.15;
+ let s=10-r/20-(gust>100?5:gust>80?3.5:gust>60?2:gust>40?1:0)-(chill<-22?2:chill<-15?1:0)-(rain>5?1:0);
+ if(gust>=60)why.push("porywy do "+Math.round(gust)+" km/h");
+ if(chill<-15)why.push("odczuwalna temperatura ok. "+chill.toFixed(0)+"°C");
+ if(r>=60)s=Math.min(s,3);s=Math.max(0,Math.min(10,Math.round(s*10)/10));
+ const col=s>=7?"#16a34a":s>=4.5?"#d97706":"#dc2626",
+ vd=s>=7?"Warunki sprzyjające":s>=4.5?"Z ostrożnością":"Odradzam wejście";
+ out.replaceChildren();
+ const c=el("div","card"),top=el("div","top"),sc=el("div","score"),hd=el("div");
+ sc.style.background=col;sc.append(el("b",0,s.toFixed(1)),el("small",0,"/ 10"));
+ hd.append(el("h2",0,p[0]+" · "+p[4]+" m"),el("div","mu",p[1]),el("div",0,vd));
+ top.append(sc,hd);c.append(top);out.append(c);
+ const c2=el("div","card");c2.append(el("b",0,"Ryzyko lawinowe (orientacyjne): "+r+" / 100"));
+ const b=el("div","bar"),m=el("i");m.style.left=r+"%";b.append(m);c2.append(b);
+ c2.append(el("div","mu","Zawsze sprawdź oficjalny komunikat lawinowy."));
+ const ul=el("ul");(why.length?why:["brak wyraźnych czynników ryzyka w modelu"]).forEach(w=>ul.append(el("li",0,w)));c2.append(ul);out.append(c2);
+ const c3=el("div","card"),tb=el("table"),hr=el("tr");["Wysokość","Temp. teraz","Wiatr / porywy 12 h"].forEach(x=>hr.append(el("th",0,x)));tb.append(hr);
+ [Math.round(p[4]*.55/100)*100,Math.round(p[4]*.8/100)*100,p[4]].forEach((z,n)=>{
+  const f=[.55,.75,1][n],tr=el("tr");
+  tr.append(el("td",0,z+" m"),el("td",0,(T+.0065*(p[4]-z)*100).toFixed(1)+"°C"),el("td",0,Math.round(wind*f)+" / "+Math.round(gust*f)+" km/h"));tb.append(tr)});
+ c3.append(tb);out.append(c3);
+}
+</script></body></html>
